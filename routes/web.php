@@ -41,6 +41,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('cart')->name('cart.')->group(function () {
         Route::get('/', [CartController::class, 'index'])->name('index');
         Route::post('/add/{product}', [CartController::class, 'add'])->name('add');
+        Route::post('/buy-now/{product}', [CartController::class, 'buyNow'])->name('buy-now');
         Route::delete('/{cartItem}', [CartController::class, 'remove'])->name('remove');
         Route::patch('/{cartItem}', [CartController::class, 'update'])->name('update');
     });

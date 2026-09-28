@@ -46,6 +46,22 @@ class CartController extends Controller
         return back()->with('success', 'Product added to cart!');
     }
 
+    public function buyNow(Product $product, Request $request): RedirectResponse
+    {
+        $quantity = (int) $request->input('quantity', 1);
+
+        if ($quantity < 1 || $quantity > $product->stock_quantity) {
+            return back()->with('error', 'Please choose a valid quantity.');
+        }
+
+        session(['buy_now' => [
+            'product_id' => $product->id,
+            'quantity' => $quantity,
+        ]]);
+
+        return redirect()->route('checkout');
+    }
+
     public function remove(CartItem $cartItem): RedirectResponse
     {
         if ($cartItem->user_id !== Auth::id()) {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -23,7 +24,7 @@ class PaymentController extends Controller
         }
 
         $validated = $request->validate([
-            'payment_method' => 'required|in:esewa,khalti,bank',
+            'payment_method' => 'required|in:esewa,khalti',
         ]);
 
         $paymentMethod = $validated['payment_method'];
@@ -32,23 +33,24 @@ class PaymentController extends Controller
 
         if ($paymentMethod === 'esewa') {
             return $this->initiateEsewa($order);
-        } elseif ($paymentMethod === 'khalti') {
+        } else {
             return $this->initiateKhalti($order);
-        } elseif ($paymentMethod === 'bank') {
-            return $this->initiateBankTransfer($order);
         }
-
-        return back()->with('error', 'Selected payment method is currently unsupported.');
     }
 
-    private function initiateEsewa(Order $order): View
+    private function initiateEsewa(Order $order): View|RedirectResponse
     {
         $transactionUuid = 'ORD-' . $order->id . '-' . time();
         
-        $totalAmount = $order->total_price;
+        $totalAmount = number_format((float) $order->total_price, 2, '.', '');
         
-        $productCode = config('services.esewa.merchant_code', 'EPAYTEST');
-        $secretKey = config('services.esewa.secret_key', '8gBm/:&EnhH.1/q');
+        $productCode = config('services.esewa.merchant_code');
+        $secretKey = config('services.esewa.secret_key');
+        $formUrl = config('services.esewa.form_url', 'https://rc-epay.esewa.com.np/api/epay/main/v2/form');
+
+        if (blank($productCode) || blank($secretKey)) {
+            return back()->with('error', 'eSewa is not configured. Add ESEWA_MERCHANT_CODE and ESEWA_SECRET_KEY to your .env file.');
+        }
 
         $order->transaction_uuid = $transactionUuid;
         $order->save();
@@ -73,7 +75,7 @@ class PaymentController extends Controller
             'signature' => $signature,
         ];
 
-        $actionUrl = config('services.esewa.base_url', 'https://rc-epay.esewa.com.np') . '/api/epay/main/v2/form';
+        $actionUrl = $formUrl;
 
         // Return an auto-submitting view to fix the eSewa 404/GET method issue
         return view('payments.esewa-redirect', compact('actionUrl', 'formData'));
@@ -81,10 +83,16 @@ class PaymentController extends Controller
 
     private function initiateKhalti(Order $order): RedirectResponse
     {
+        $secretKey = config('services.khalti.secret_key');
+
+        if (blank($secretKey)) {
+            return back()->with('error', 'Khalti is not configured. Add KHALTI_SECRET_KEY to your .env file.');
+        }
+
         $totalAmount = $order->total_price;
 
         $response = Http::withHeaders([
-            'Authorization' => 'Key ' . config('services.khalti.secret_key'),
+            'Authorization' => 'Key ' . $secretKey,
             'Content-Type' => 'application/json',
         ])->post(rtrim(config('services.khalti.base_url', 'https://a.khalti.com'), '/') . '/api/v2/epayment/initiate/', [
             'return_url' => route('payment.khalti.verify'),
@@ -93,6 +101,10 @@ class PaymentController extends Controller
             'purchase_order_id' => (string) $order->id,
             'purchase_order_name' => 'Order #' . $order->id,
         ]);
+
+        if ($response->unauthorized()) {
+            return back()->with('error', 'Khalti rejected the API key. Set KHALTI_SECRET_KEY to a valid sandbox key from test-admin.khalti.com.');
+        }
 
         if (!$response->successful()) {
             return back()->with('error', 'Could not initiate Khalti payment. Response: ' . $response->body());
@@ -106,16 +118,6 @@ class PaymentController extends Controller
         return redirect()->away($responseData['payment_url']);
     }
 
-    private function initiateBankTransfer(Order $order): RedirectResponse
-    {
-        // Implement manual bank transfer handling logic or ConnectIPS integration here
-        $order->payment_status = 'pending';
-        $order->save();
-
-        return redirect()->route('orders.show', $order->id)
-            ->with('success', 'Bank transfer instructions saved. Please complete the bank transfer.');
-    }
-
     public function verifyEsewa(Request $request): RedirectResponse
     {
         $encodedData = $request->query('data');
@@ -127,12 +129,18 @@ class PaymentController extends Controller
         $transactionUuid = $decodedData['transaction_uuid'] ?? null;
         
         $order = Order::where('transaction_uuid', $transactionUuid)->firstOrFail();
+        /** @var Order $order */
 
-        $response = Http::get(rtrim(config('services.esewa.base_url', 'https://rc-epay.esewa.com.np'), '/') . '/api/epay/transaction/status/', [
-            'product_code' => config('services.esewa.merchant_code', 'EPAYTEST'),
-            'total_amount' => $decodedData['total_amount'],
-            'transaction_uuid' => $transactionUuid,
-        ]);
+        try {
+            $response = Http::get(rtrim(config('services.esewa.status_url', 'https://rc.esewa.com.np'), '/') . '/api/epay/transaction/status/', [
+                'product_code' => config('services.esewa.merchant_code'),
+                'total_amount' => $decodedData['total_amount'],
+                'transaction_uuid' => $transactionUuid,
+            ]);
+        } catch (ConnectionException) {
+            return redirect()->route('orders.show', $order->id)
+                ->with('error', 'Unable to reach eSewa to verify your payment. The payment is still pending; please check your order again shortly.');
+        }
 
         if ($response->successful() && data_get($response->json(), 'status') === 'COMPLETE') {
             $order->payment_status = 'completed';
@@ -151,9 +159,16 @@ class PaymentController extends Controller
     {
         $pidx = $request->query('pidx');
         $order = Order::where('transaction_uuid', $pidx)->firstOrFail();
+        /** @var Order $order */
+
+        $secretKey = config('services.khalti.secret_key');
+        if (blank($secretKey)) {
+            return redirect()->route('orders.show', $order->id)
+                ->with('error', 'Khalti is not configured. Add KHALTI_SECRET_KEY to your .env file.');
+        }
 
         $response = Http::withHeaders([
-            'Authorization' => 'Key ' . config('services.khalti.secret_key'),
+            'Authorization' => 'Key ' . $secretKey,
         ])->post(rtrim(config('services.khalti.base_url', 'https://a.khalti.com'), '/') . '/api/v2/epayment/lookup/', [
             'pidx' => $pidx,
         ]);

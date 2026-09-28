@@ -27,7 +27,9 @@ class ProductController extends Controller
 
         $products = $query->paginate(12);
 
-        return view('home', compact('products', 'categories'));
+        $view = $request->routeIs('products.index') ? 'products.index' : 'home';
+
+        return view($view, compact('products', 'categories'));
     }
 
     public function show(Product $product): View

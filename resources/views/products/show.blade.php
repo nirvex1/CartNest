@@ -31,14 +31,24 @@
 
             @auth
                 @if($product->stock_quantity > 0)
-                    <form method="POST" action="/cart/add/{{ $product->id }}" class="space-y-4">
+                    <form method="POST" action="{{ route('cart.add', $product->id) }}" class="space-y-4">
                         @csrf
                         <div>
                             <label class="block text-gray-700 font-semibold mb-2">Quantity</label>
                             <input type="number" name="quantity" min="1" max="{{ $product->stock_quantity }}" value="1" class="border border-gray-300 rounded px-3 py-2 w-32">
                         </div>
-                        <button type="submit" class="bg-blue-600 text-white px-8 py-3 rounded hover:bg-blue-700 text-lg font-semibold">
+                        <button type="submit" class="block w-full rounded-xl bg-[#1f4935] px-8 py-3 text-lg font-semibold text-white transition hover:bg-[#163827]">
                             Add to Cart
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('cart.buy-now', $product->id) }}" class="mt-3">
+                        @csrf
+                        <div class="mb-3 flex items-center justify-between gap-4">
+                            <label for="buy-now-quantity" class="text-sm font-semibold text-[#6b746f]">Quantity</label>
+                            <input id="buy-now-quantity" type="number" name="quantity" min="1" max="{{ $product->stock_quantity }}" value="1" class="w-24 rounded-lg border border-[#d7e1d9] px-3 py-2 text-center">
+                        </div>
+                        <button type="submit" class="block w-full rounded-xl border-2 border-[#e4795c] px-8 py-3 text-lg font-semibold text-[#c85f45] transition hover:bg-[#fff4f0]">
+                            Buy Now
                         </button>
                     </form>
                 @endif

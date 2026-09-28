@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\CartItem;
+use App\Models\Product;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -16,10 +19,9 @@ class OrderController extends Controller
         $this->middleware('auth');
     }
 
-    public function checkout(): View
+    public function checkout(): View|RedirectResponse
     {
-        // Step 1: Show items from CART (CartItem), NOT from Order
-        $cartItems = Auth::user()->cartItems()->with('product')->get();
+        $cartItems = $this->purchaseItems();
         if ($cartItems->isEmpty()) {
             return redirect('/cart')->with('error', 'Your cart is empty!');
         }
@@ -32,8 +34,7 @@ class OrderController extends Controller
 
     public function create(Request $request): RedirectResponse
     {
-        // Step 2: Convert cart items to order when customer confirms
-        $cartItems = Auth::user()->cartItems()->with('product')->get();
+        $cartItems = $this->purchaseItems();
         if ($cartItems->isEmpty()) {
             return redirect('/cart')->with('error', 'Your cart is empty!');
         }
@@ -63,14 +64,41 @@ class OrderController extends Controller
             ]);
         }
 
-        // Clear the cart
-        Auth::user()->cartItems()->delete();
+        if (session()->has('buy_now')) {
+            session()->forget('buy_now');
+        } else {
+            Auth::user()->cartItems()->delete();
+        }
 
         // Redirect to payment page
         return redirect("/orders/{$order->id}/payment")->with('success', 'Proceed to payment!');
     }
 
-    public function payment(Order $order): View
+    private function purchaseItems(): Collection
+    {
+        $buyNow = session('buy_now');
+
+        if ($buyNow) {
+            $product = Product::find($buyNow['product_id']);
+
+            if (!$product || $product->stock_quantity < $buyNow['quantity']) {
+                session()->forget('buy_now');
+                return new Collection();
+            }
+
+            $item = new CartItem([
+                'product_id' => $product->id,
+                'quantity' => $buyNow['quantity'],
+            ]);
+            $item->setRelation('product', $product);
+
+            return new Collection([$item]);
+        }
+
+        return Auth::user()->cartItems()->with('product')->get();
+    }
+
+    public function payment(Order $order): View|RedirectResponse
     {
         // Step 3: Show PENDING order for payment
         if ($order->user_id !== Auth::id()) {
@@ -90,7 +118,7 @@ class OrderController extends Controller
         return view('orders.index', compact('orders'));
     }
 
-    public function show(Order $order): View
+    public function show(Order $order): View|RedirectResponse
     {
         if ($order->user_id !== Auth::id()) {
             return redirect('/orders')->with('error', 'Unauthorized');

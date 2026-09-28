@@ -6,39 +6,37 @@
     <title>@yield('title', 'CartNest')</title>
     @vite('resources/css/app.css')
 </head>
-<body class="bg-gray-50">
-    <nav class="bg-white shadow">
-        <div class="max-w-7xl mx-auto px-4">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center">
-                    <a href="/" class="text-2xl font-bold text-blue-600">CartNest</a>
-                </div>
+<body>
+    <nav class="site-nav border-b border-[#e4e9e5] bg-[#fbfcfa]/95 backdrop-blur">
+        <div class="mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 py-4 lg:px-8">
+            <a href="{{ route('home') }}" class="font-display text-2xl font-bold tracking-[-0.04em] text-[#1f4935]">Cart<span class="text-[#e4795c]">Nest</span></a>
 
-                <div class="flex space-x-6">
-                    <a href="/products" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700">Products</a>
+            <div class="hidden items-center gap-7 text-sm font-semibold text-[#6b746f] md:flex">
+                <a href="{{ route('home') }}" class="transition hover:text-[#1f4935]">Shop</a>
+                <a href="{{ route('products.index') }}" class="transition hover:text-[#1f4935]">All products</a>
 
                     @auth
-                        <a href="/cart" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700">Cart</a>
-                        <a href="/orders" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700">Orders</a>
+                        <a href="{{ route('cart.index') }}" class="transition hover:text-[#1f4935]">Cart</a>
+                        <a href="{{ route('orders.index') }}" class="transition hover:text-[#1f4935]">Orders</a>
 
                         @if(auth()->user()->is_admin)
-                            <a href="/admin" class="bg-blue-600 text-white px-4 py-2 rounded font-semibold hover:bg-blue-700">Admin</a>
+                            <a href="{{ route('admin.dashboard') }}" class="transition hover:text-[#1f4935]">Admin</a>
                         @endif
 
-                        <form method="POST" action="/logout" style="display: inline;">
+                        <form method="POST" action="{{ route('logout') }}" class="inline">
                             @csrf
-                            <button type="submit" style="background-color: #dc2626; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; border: none; cursor: pointer;" onmouseover="this.style.backgroundColor='#b91c1c'" onmouseout="this.style.backgroundColor='#dc2626'">Logout</button>
+                            <button type="submit" class="transition hover:text-[#e4795c]">Logout</button>
                         </form>
                     @else
-                        <a href="/login" style="background-color: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; display: inline-block; text-decoration: none;" onmouseover="this.style.backgroundColor='#1d4ed8'" onmouseout="this.style.backgroundColor='#2563eb'">Login</a>
-                        <a href="/register" style="background-color: #16a34a; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600; display: inline-block; text-decoration: none;" onmouseover="this.style.backgroundColor='#15803d'" onmouseout="this.style.backgroundColor='#16a34a'">Register</a>
+                        <a href="{{ route('login') }}" class="transition hover:text-[#1f4935]">Login</a>
+                        <a href="{{ route('register') }}" class="rounded-full bg-[#1f4935] px-4 py-2 text-white transition hover:bg-[#163827]">Join CartNest</a>
                     @endauth
-                </div>
             </div>
-        </div>
+            <a href="{{ route('products.index') }}" class="rounded-full border border-[#cbd9ce] px-4 py-2 text-sm font-semibold text-[#1f4935] transition hover:border-[#1f4935] md:hidden">Shop</a>
+            </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto px-4 py-8">
+    <main class="mx-auto max-w-7xl px-5 py-8 lg:px-8">
         @if($errors->any())
             <div class="mb-4 p-4 bg-red-100 text-red-700 rounded">
                 @foreach($errors->all() as $error)
@@ -60,10 +58,13 @@
         @endif
 
         @yield('content')
-    </div>
+    </main>
 
-    <footer class="bg-gray-200 text-gray-600 text-center py-4 mt-8">
-        <p>&copy; 2026 CartNest. All rights reserved.</p>
+    <footer class="mt-12 border-t border-[#e4e9e5] bg-[#f3f6f1]">
+        <div class="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-8 text-sm text-[#6b746f] sm:flex-row sm:items-center sm:justify-between lg:px-8">
+            <p class="font-display font-semibold text-[#1f4935]">Cart<span class="text-[#e4795c]">Nest</span></p>
+            <p>&copy; 2026 CartNest. Thoughtfully made for everyday shopping.</p>
+        </div>
     </footer>
 </body>
 </html>

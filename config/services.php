@@ -36,13 +36,14 @@ return [
     ],
 
     'esewa' => [
-    'base_url' => env('ESEWA_BASE_URL', 'https://rc-epay.esewa.com.np'), // Use epay.esewa.com.np for production
-    'merchant_code' => env('ESEWA_MERCHANT_CODE', 'EPAYTEST'),
-    'secret_key' => env('ESEWA_SECRET_KEY', '8gBm/:&EnhH.1/q'),
-],
-'khalti' => [
-    'base_url' => env('KHALTI_BASE_URL', 'https://a.khalti.com'), // or appropriate live endpoint
-    'secret_key' => env('KHALTI_SECRET_KEY'),
-],
+        'form_url' => env('ESEWA_FORM_URL', 'https://rc-epay.esewa.com.np/api/epay/main/v2/form'),
+        'status_url' => env('ESEWA_STATUS_URL', 'https://rc.esewa.com.np'),
+        'merchant_code' => env('ESEWA_MERCHANT_CODE'),
+        'secret_key' => env('ESEWA_SECRET_KEY'),
+    ],
+    'khalti' => [
+        'base_url' => env('KHALTI_BASE_URL', 'https://dev.khalti.com'),
+        'secret_key' => env('KHALTI_SECRET_KEY'),
+    ],
 
 ];
